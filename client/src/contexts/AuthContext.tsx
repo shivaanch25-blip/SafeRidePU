@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import api from '../config/axios.js';
-import { IUserShared } from '@saferide/shared';
+import { IUserShared } from '../types/shared.js';
 import toast from 'react-hot-toast';
 
 interface AuthContextType {

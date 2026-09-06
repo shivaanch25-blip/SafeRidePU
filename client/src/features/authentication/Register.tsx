@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext.js';
-import { ROLES } from '@saferide/shared';
+import { ROLES } from '../../types/shared.js';
 import { FiUser, FiMail, FiLock, FiPhone, FiAlertCircle, FiCheckCircle } from 'react-icons/fi';
 
 export const Register: React.FC = () => {

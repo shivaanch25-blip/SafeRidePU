@@ -22,8 +22,7 @@
     "noFallthroughCasesInSwitch": true,
 
     "paths": {
-      "@/*": ["./src/*"],
-      "@saferide/shared": ["../shared/src/index.ts"]
+      "@/*": ["./src/*"]
     }
   },
   "include": ["src"]
