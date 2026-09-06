@@ -1,7 +1,9 @@
 import axios from 'axios';
 
+const apiBase = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL.replace(/\/$/, '') : '';
+
 const api = axios.create({
-  baseURL: '/api/v1',
+  baseURL: `${apiBase}/api/v1`,
   withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
@@ -24,7 +26,7 @@ api.interceptors.response.use(
 
       try {
         // Call refresh rotation endpoint
-        await axios.post('/api/v1/auth/refresh', {}, { withCredentials: true });
+        await axios.post(`${apiBase}/api/v1/auth/refresh`, {}, { withCredentials: true });
 
         // Resend the original request
         return api(originalRequest);

@@ -4,7 +4,7 @@ dotenv.config();
 
 import { createServer } from 'http';
 import { Server } from 'socket.io';
-import { app } from './app.js';
+import { app, isAllowedOrigin } from './app.js';
 import { connectDatabase } from './config/db.js';
 import { logger } from './config/logger.js';
 
@@ -16,10 +16,16 @@ const startServer = async () => {
 
   const httpServer = createServer(app);
 
-  // Initialize Socket.IO with CORS configuration
+  // Initialize Socket.IO with dynamic CORS configuration
   const io = new Server(httpServer, {
     cors: {
-      origin: process.env.CLIENT_URL || 'http://localhost:5173',
+      origin: (origin, callback) => {
+        if (isAllowedOrigin(origin)) {
+          callback(null, true);
+        } else {
+          callback(new Error('Socket.IO origin denied'));
+        }
+      },
       methods: ['GET', 'POST'],
       credentials: true,
     },

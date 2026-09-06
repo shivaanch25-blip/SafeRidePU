@@ -18,14 +18,42 @@ import sosRoutes from './routes/sosRoutes.js';
 import chatbotRoutes from './routes/chatbotRoutes.js';
 
 
+import path from 'path';
+import fs from 'fs';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+export const isAllowedOrigin = (origin?: string): boolean => {
+  if (!origin) return true;
+  const configured = process.env.CLIENT_URL
+    ? process.env.CLIENT_URL.split(',').map((u) => u.trim())
+    : ['http://localhost:5173', 'http://localhost:5000', 'http://127.0.0.1:5173'];
+
+  if (configured.includes(origin)) return true;
+  if (origin.endsWith('.vercel.app') || origin.endsWith('.onrender.com') || origin.includes('localhost')) {
+    return true;
+  }
+  return false;
+};
+
 const app = express();
 
 // Secure headers
-app.use(helmet());
+app.use(helmet({
+  contentSecurityPolicy: false, // Allows Leaflet tiles and external CDNs
+}));
 
-// CORS configuration
+// CORS configuration supporting comma-separated domains and Vercel/Render domains
 app.use(cors({
-  origin: process.env.CLIENT_URL || 'http://localhost:5173',
+  origin: (origin, callback) => {
+    if (isAllowedOrigin(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error(`CORS error: origin ${origin} not allowed.`));
+    }
+  },
   credentials: true,
 }));
 
@@ -78,6 +106,19 @@ app.get('/api/v1/health', (req, res) => {
     dbState: states[dbState] || 'unknown',
   }, 'System is healthy');
 });
+
+// Serve built client frontend static files in single-container production deployment
+const clientDistPath = path.resolve(__dirname, '../../client/dist');
+if (fs.existsSync(clientDistPath)) {
+  app.use(express.static(clientDistPath));
+
+  app.get('*', (req, res, next) => {
+    if (req.originalUrl.startsWith('/api') || req.originalUrl.startsWith('/docs')) {
+      return next();
+    }
+    res.sendFile(path.join(clientDistPath, 'index.html'));
+  });
+}
 
 // Catch-all route to trigger 404 AppError
 app.all('*', (req, res, next) => {

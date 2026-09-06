@@ -12,12 +12,13 @@
     "dev:client": "npm run dev --workspace=client",
     "dev:server": "npm run dev --workspace=server",
     "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
-    "build:client": "npm run build --workspace=client",
-    "build:server": "npm run build --workspace=server",
-    "build": "npm run build --workspaces",
+    "build:client": "npm run build --workspace=shared && npm run build --workspace=client",
+    "build:server": "npm run build --workspace=shared && npm run build --workspace=server",
+    "build": "npm run build --workspace=shared && npm run build --workspace=server && npm run build --workspace=client",
+    "start": "node server/dist/server.js",
     "lint": "npm run lint --workspaces",
     "format": "prettier --write \"**/*.{js,jsx,ts,tsx,json,css,md}\"",
-    "prepare": "husky"
+    "prepare": "node -e \"try { require('child_process').execSync('husky', {stdio: 'inherit'}) } catch {}\""
   },
   "devDependencies": {
     "concurrently": "^8.2.2",
