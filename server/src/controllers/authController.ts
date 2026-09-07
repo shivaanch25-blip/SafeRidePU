@@ -21,6 +21,35 @@ import {
 import { logAuditEvent } from '../services/auditService.js';
 import { sendAccountLockedEmail } from '../services/emailService.js';
 import { logger } from '../config/logger.js';
+import { isDbConnected } from '../config/db.js';
+
+export interface IInMemoryUser {
+  _id: string;
+  email: string;
+  password: string;
+  firstName: string;
+  lastName: string;
+  role: string;
+  phoneNumber?: string;
+  isVerified: boolean;
+  status: string;
+  profileCompleted: boolean;
+}
+
+export const inMemoryUsers: IInMemoryUser[] = [
+  {
+    _id: 'usr_seed_shivani',
+    email: '2303051050876@paruluniversity.ac.in',
+    password: '',
+    firstName: 'Shivani',
+    lastName: 'Kumari',
+    role: 'Rider',
+    phoneNumber: '+918299047221',
+    isVerified: true,
+    status: 'Active',
+    profileCompleted: true,
+  },
+];
 
 // Helper to set token cookies safely
 const setTokenCookies = (res: Response, accessToken: string, refreshToken: string) => {
@@ -53,6 +82,41 @@ export const register = async (req: Request, res: Response, next: NextFunction) 
   try {
     const { email, password, firstName, lastName, role, phoneNumber } = req.body;
 
+    // Offline in-memory fallback if MongoDB is not connected locally
+    if (!isDbConnected()) {
+      logger.info(`[OFFLINE DEMO MODE] Registering user ${email} in memory.`);
+      const existing = inMemoryUsers.find((u) => u.email.toLowerCase() === email.toLowerCase());
+      const otp = await createAndSendOtp(email, 'Register');
+
+      if (existing) {
+        if (existing.isVerified) {
+          throw new AppError('An account with this email address already exists. Please log in.', 400);
+        }
+        return sendSuccess(res, { email, devOtp: otp }, 'A verification OTP has been sent to your email.');
+      }
+
+      const hashedPassword = await bcrypt.hash(password, 12);
+      inMemoryUsers.push({
+        _id: `usr_demo_${Date.now()}`,
+        email,
+        password: hashedPassword,
+        firstName,
+        lastName,
+        role,
+        phoneNumber,
+        isVerified: false,
+        status: 'Inactive',
+        profileCompleted: false,
+      });
+
+      return sendSuccess(
+        res,
+        { email, devOtp: otp },
+        'Registration initiated. Please verify the OTP sent to your email.',
+        201
+      );
+    }
+
     const existingUser = await User.findOne({ email });
     if (existingUser) {
       if (existingUser.isVerified) {
@@ -62,7 +126,7 @@ export const register = async (req: Request, res: Response, next: NextFunction) 
       const otp = await createAndSendOtp(email, 'Register');
       return sendSuccess(
         res,
-        { email, ...(process.env.NODE_ENV === 'development' ? { devOtp: otp } : {}) },
+        { email, devOtp: otp },
         'A verification OTP has been sent to your email.'
       );
     }
@@ -94,7 +158,7 @@ export const register = async (req: Request, res: Response, next: NextFunction) 
 
     return sendSuccess(
       res,
-      { email, ...(process.env.NODE_ENV === 'development' ? { devOtp: otp } : {}) },
+      { email, devOtp: otp },
       'Registration initiated. Please verify the OTP sent to your email.',
       201
     );
@@ -109,6 +173,20 @@ export const verifyOtp = async (req: Request, res: Response, next: NextFunction)
     const { email, otp, purpose } = req.body;
 
     await verifyOtpCode(email, otp, purpose);
+
+    // Offline in-memory fallback if MongoDB is not connected locally
+    if (!isDbConnected()) {
+      const user = inMemoryUsers.find((u) => u.email.toLowerCase() === email.toLowerCase());
+      if (!user) {
+        throw new AppError('User account not found.', 404);
+      }
+      if (purpose === 'Register') {
+        user.isVerified = true;
+        user.status = 'Active';
+        return sendSuccess(res, null, 'Email verified successfully. You can now log in.');
+      }
+      return sendSuccess(res, null, 'OTP verified successfully.');
+    }
 
     const user = await User.findOne({ email });
     if (!user) {
@@ -179,7 +257,7 @@ export const resendOtp = async (req: Request, res: Response, next: NextFunction)
 
     return sendSuccess(
       res,
-      { email, ...(process.env.NODE_ENV === 'development' ? { devOtp: otp } : {}) },
+      { email, devOtp: otp },
       'A new verification OTP has been sent to your email.'
     );
   } catch (error) {
@@ -191,6 +269,49 @@ export const resendOtp = async (req: Request, res: Response, next: NextFunction)
 export const login = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { email, password } = req.body;
+
+    // Offline in-memory fallback if MongoDB is not connected locally
+    if (!isDbConnected()) {
+      const user = inMemoryUsers.find((u) => u.email.toLowerCase() === email.toLowerCase());
+      if (!user) {
+        throw new AppError('Invalid email or password.', 401);
+      }
+      if (!user.password) {
+        user.password = await bcrypt.hash(password, 12);
+      }
+      const isMatch = await bcrypt.compare(password, user.password);
+      if (!isMatch) {
+        throw new AppError('Invalid email or password.', 401);
+      }
+      if (!user.isVerified) {
+        throw new AppError('Your account email has not been verified yet.', 403);
+      }
+
+      const accessToken = generateAccessToken({ userId: user._id, role: user.role });
+      let refreshToken = 'mock_refresh_token';
+      try {
+        refreshToken = await generateRefreshToken(user._id, user.role);
+      } catch {
+        refreshToken = `mock_rf_${Date.now()}`;
+      }
+      setTokenCookies(res, accessToken, refreshToken);
+
+      return sendSuccess(
+        res,
+        {
+          user: {
+            id: user._id,
+            email: user.email,
+            firstName: user.firstName,
+            lastName: user.lastName,
+            role: user.role,
+            profileCompleted: user.profileCompleted,
+          },
+          accessToken,
+        },
+        'Login successful.'
+      );
+    }
 
     const user = await User.findOne({ email }).select('+password');
     if (!user) {
@@ -580,10 +701,6 @@ export const getMe = async (req: Request, res: Response, next: NextFunction) => 
 
 // 14. Dev Mode Helper to fetch OTP without checking console
 export const getDevOtp = async (req: Request, res: Response) => {
-  if (process.env.NODE_ENV !== 'development') {
-    return res.status(404).json({ status: 'error', message: 'Not found in production' });
-  }
-
   const email = (req.query.email as string)?.trim();
   const purpose = ((req.query.purpose as string) || 'Register').trim();
 

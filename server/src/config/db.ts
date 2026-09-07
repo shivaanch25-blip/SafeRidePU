@@ -17,9 +17,12 @@ export const connectDatabase = async (): Promise<void> => {
   });
 
   try {
-    await mongoose.connect(uri, { serverSelectionTimeoutMS: 3000 });
+    mongoose.set('bufferCommands', false);
+    await mongoose.connect(uri, { serverSelectionTimeoutMS: 2500 });
   } catch (error) {
-    logger.warn(`⚠️ Could not connect to MongoDB at ${uri}. Running with offline database.`);
+    logger.warn(`⚠️ Could not connect to MongoDB at ${uri}. Running with offline in-memory fallback.`);
     logger.warn('To enable persistent data, start MongoDB locally or configure a free MongoDB Atlas URI in server/.env.');
   }
 };
+
+export const isDbConnected = (): boolean => mongoose.connection.readyState === 1;

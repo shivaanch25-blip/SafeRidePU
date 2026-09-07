@@ -34,9 +34,26 @@ export const errorHandler = (
     });
   }
 
-  // Unknown programming error: mask message
-  return res.status(500).json({
+  // Handle MongoDB Duplicate Key (E11000)
+  if ('code' in err && (err as any).code === 11000) {
+    const field = Object.keys((err as any).keyPattern || {})[0] || 'field';
+    return res.status(400).json({
+      status: 'fail',
+      message: `An account with this ${field} already exists.`,
+    });
+  }
+
+  // Handle Mongoose Validation Error
+  if (err.name === 'ValidationError') {
+    return res.status(400).json({
+      status: 'fail',
+      message: err.message,
+    });
+  }
+
+  // Fallback production error message with safe details
+  return res.status(statusCode || 500).json({
     status: 'error',
-    message: 'An unexpected system error occurred.',
+    message: err.message || 'An unexpected system error occurred.',
   });
 };

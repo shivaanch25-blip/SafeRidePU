@@ -4,6 +4,7 @@ import { User, IUser } from '../models/User.js';
 import { AppError } from '../utils/appError.js';
 import { UserRole } from '@saferide/shared';
 import { asyncHandler } from '../utils/asyncHandler.js';
+import { isDbConnected } from '../config/db.js';
 
 // Extend Express Request interface locally to support typing on user and session details
 declare global {
@@ -31,6 +32,22 @@ export const requireAuth = asyncHandler(async (req: Request, res: Response, next
 
   // 1. Verify token signature
   const decoded = verifyAccessToken(token);
+
+  // Offline fallback if MongoDB is not running locally
+  if (!isDbConnected()) {
+    req.user = {
+      _id: (decoded.userId || 'usr_demo') as any,
+      email: (decoded as any).email || 'student@paruluniversity.ac.in',
+      role: decoded.role,
+      firstName: 'Student',
+      lastName: 'Rider',
+      isVerified: true,
+      status: 'Active',
+      profileCompleted: true,
+    } as any;
+    req.token = token;
+    return next();
+  }
 
   // 2. Fetch User and verify status
   const user = await User.findById(decoded.userId).select('+password');
