@@ -24,13 +24,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
   const checkAuthStatus = async () => {
+    const token = localStorage.getItem('saferide_token');
+    if (!token) {
+      setUser(null);
+      setIsLoading(false);
+      return;
+    }
+
     try {
       const response = await api.get('/auth/me');
       if (response.data?.status === 'success') {
         setUser(response.data.data.user);
+        localStorage.setItem('saferide_user', JSON.stringify(response.data.data.user));
       }
     } catch (error) {
       setUser(null);
+      localStorage.removeItem('saferide_token');
+      localStorage.removeItem('saferide_user');
     } finally {
       setIsLoading(false);
     }
@@ -40,6 +50,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     checkAuthStatus();
 
     const handleSessionExpired = () => {
+      localStorage.removeItem('saferide_token');
+      localStorage.removeItem('saferide_user');
       setUser(null);
       toast.error('Your session has expired. Please log in again.');
     };
@@ -55,7 +67,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     try {
       const response = await api.post('/auth/login', { email, password });
       if (response.data?.status === 'success') {
-        setUser(response.data.data.user);
+        const userData = response.data.data?.user;
+        const accessToken = response.data.data?.accessToken;
+
+        if (accessToken) {
+          localStorage.setItem('saferide_token', accessToken);
+        }
+        if (userData) {
+          localStorage.setItem('saferide_user', JSON.stringify(userData));
+          setUser(userData);
+        }
         toast.success('Logged in successfully!');
       }
     } catch (error: any) {
@@ -131,6 +152,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     } catch (error) {
       // Silent catch
     } finally {
+      localStorage.removeItem('saferide_token');
+      localStorage.removeItem('saferide_user');
       setUser(null);
       toast.success('Logged out successfully.');
     }
@@ -140,6 +163,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setIsLoading(true);
     try {
       await api.post('/auth/logout-all');
+      localStorage.removeItem('saferide_token');
+      localStorage.removeItem('saferide_user');
       setUser(null);
       toast.success('Logged out from all devices successfully.');
     } catch (error: any) {

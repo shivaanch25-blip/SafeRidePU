@@ -5,6 +5,7 @@ import { AppError } from '../utils/appError.js';
 import { UserRole } from '@saferide/shared';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { isDbConnected } from '../config/db.js';
+import { inMemoryUsers } from '../controllers/authController.js';
 
 // Extend Express Request interface locally to support typing on user and session details
 declare global {
@@ -35,12 +36,13 @@ export const requireAuth = asyncHandler(async (req: Request, res: Response, next
 
   // Offline fallback if MongoDB is not running locally
   if (!isDbConnected()) {
+    const memUser = inMemoryUsers.find((u) => u._id === decoded.userId || u.email === (decoded as any).email);
     req.user = {
       _id: (decoded.userId || 'usr_demo') as any,
-      email: (decoded as any).email || 'student@paruluniversity.ac.in',
-      role: decoded.role,
-      firstName: 'Student',
-      lastName: 'Rider',
+      email: memUser ? memUser.email : ((decoded as any).email || 'student@paruluniversity.ac.in'),
+      role: (memUser?.role || decoded.role) as any,
+      firstName: memUser ? memUser.firstName : 'Student',
+      lastName: memUser ? memUser.lastName : 'Rider',
       isVerified: true,
       status: 'Active',
       profileCompleted: true,
@@ -106,10 +108,25 @@ export const optionalAuth = asyncHandler(async (req: Request, res: Response, nex
   if (token) {
     try {
       const decoded = verifyAccessToken(token);
-      const user = await User.findById(decoded.userId);
-      if (user) {
-        req.user = user;
+      if (!isDbConnected()) {
+        const memUser = inMemoryUsers.find((u) => u._id === decoded.userId || u.email === (decoded as any).email);
+        req.user = {
+          _id: (decoded.userId || 'usr_demo') as any,
+          email: memUser ? memUser.email : ((decoded as any).email || 'student@paruluniversity.ac.in'),
+          role: (memUser?.role || decoded.role) as any,
+          firstName: memUser ? memUser.firstName : 'Student',
+          lastName: memUser ? memUser.lastName : 'Rider',
+          isVerified: true,
+          status: 'Active',
+          profileCompleted: true,
+        } as any;
         req.token = token;
+      } else {
+        const user = await User.findById(decoded.userId);
+        if (user) {
+          req.user = user;
+          req.token = token;
+        }
       }
     } catch {
       // Ignore token expiry / failure in optional auth

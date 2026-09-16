@@ -2,6 +2,7 @@ import jwt from 'jsonwebtoken';
 import { RefreshToken } from '../models/RefreshToken.js';
 import { AppError } from '../utils/appError.js';
 import { Types } from 'mongoose';
+import { isDbConnected } from '../config/db.js';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_super_secret_key_change_in_production';
 const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'your_jwt_refresh_super_secret_key_change_in_production';
@@ -25,13 +26,18 @@ export const generateRefreshToken = async (
   const token = jwt.sign({ userId, role }, JWT_REFRESH_SECRET, { expiresIn: REFRESH_EXPIRATION as any });
   const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
 
-
-  await RefreshToken.create({
-    userId: new Types.ObjectId(userId),
-    token,
-    parentToken,
-    expiresAt,
-  });
+  if (isDbConnected()) {
+    try {
+      await RefreshToken.create({
+        userId: new Types.ObjectId(userId),
+        token,
+        parentToken,
+        expiresAt,
+      });
+    } catch {
+      // Ignore offline token persistence errors
+    }
+  }
 
   return token;
 };
@@ -49,6 +55,13 @@ export const rotateRefreshToken = async (
 ): Promise<{ accessToken: string; refreshToken: string }> => {
   try {
     const payload = jwt.verify(oldTokenString, JWT_REFRESH_SECRET) as ITokenPayload;
+
+    if (!isDbConnected()) {
+      const accessToken = generateAccessToken({ userId: payload.userId, role: payload.role });
+      const refreshToken = await generateRefreshToken(payload.userId, payload.role, oldTokenString);
+      return { accessToken, refreshToken };
+    }
+
     const tokenRecord = await RefreshToken.findOne({ token: oldTokenString });
 
     // Detection of token reuse (breach)
@@ -83,9 +96,13 @@ export const rotateRefreshToken = async (
 };
 
 export const revokeRefreshToken = async (tokenString: string): Promise<void> => {
-  await RefreshToken.updateOne({ token: tokenString }, { isRevoked: true });
+  if (isDbConnected()) {
+    await RefreshToken.updateOne({ token: tokenString }, { isRevoked: true });
+  }
 };
 
 export const revokeAllUserTokens = async (userId: string): Promise<void> => {
-  await RefreshToken.updateMany({ userId: new Types.ObjectId(userId) }, { isRevoked: true });
+  if (isDbConnected()) {
+    await RefreshToken.updateMany({ userId: new Types.ObjectId(userId) }, { isRevoked: true });
+  }
 };
