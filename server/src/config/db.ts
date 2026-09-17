@@ -1,11 +1,8 @@
 import mongoose from 'mongoose';
 import { logger } from './logger.js';
 
-const DEFAULT_MONGO_URI =
-  'mongodb+srv://Shivani_25:Shivani25@cluster0.6bpwyo9.mongodb.net/saferide?appName=Cluster0&retryWrites=true&w=majority';
-
 export const connectDatabase = async (): Promise<void> => {
-  const uri = process.env.MONGO_URI || DEFAULT_MONGO_URI;
+  const uri = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/saferide';
 
   mongoose.connection.on('connected', () => {
     logger.info('Database connected successfully.');
