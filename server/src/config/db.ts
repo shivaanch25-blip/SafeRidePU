@@ -1,8 +1,11 @@
 import mongoose from 'mongoose';
 import { logger } from './logger.js';
 
+const DEFAULT_MONGO_URI =
+  'mongodb+srv://Shivani_25:Shivani25@cluster0.6bpwyo9.mongodb.net/saferide?appName=Cluster0&retryWrites=true&w=majority';
+
 export const connectDatabase = async (): Promise<void> => {
-  const uri = process.env.MONGO_URI || 'mongodb://localhost:27017/saferide';
+  const uri = process.env.MONGO_URI || DEFAULT_MONGO_URI;
 
   mongoose.connection.on('connected', () => {
     logger.info('Database connected successfully.');
@@ -18,10 +21,10 @@ export const connectDatabase = async (): Promise<void> => {
 
   try {
     mongoose.set('bufferCommands', false);
-    await mongoose.connect(uri, { serverSelectionTimeoutMS: 2500 });
+    await mongoose.connect(uri, { serverSelectionTimeoutMS: 5000 });
   } catch (error) {
     logger.warn(`⚠️ Could not connect to MongoDB at ${uri}. Running with offline in-memory fallback.`);
-    logger.warn('To enable persistent data, start MongoDB locally or configure a free MongoDB Atlas URI in server/.env.');
+    logger.warn('To enable persistent data, ensure MongoDB Atlas Network Access allows 0.0.0.0/0 or configure MONGO_URI.');
   }
 };
 

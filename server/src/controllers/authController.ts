@@ -263,6 +263,20 @@ export const resendOtp = async (req: Request, res: Response, next: NextFunction)
   try {
     const { email, purpose } = req.body;
 
+    if (!isDbConnected()) {
+      const user = inMemoryUsers.find((u) => u.email.toLowerCase() === email.toLowerCase());
+      if (!user) {
+        throw new AppError('No account found with this email.', 404);
+      }
+
+      const otp = await createAndSendOtp(email, purpose);
+      return sendSuccess(
+        res,
+        { email, devOtp: otp },
+        'A new verification OTP has been sent to your email.'
+      );
+    }
+
     const user = await User.findOne({ email });
     if (!user) {
       throw new AppError('No account found with this email.', 404);
@@ -529,6 +543,19 @@ export const refresh = async (req: Request, res: Response, next: NextFunction) =
 export const forgotPassword = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { email } = req.body;
+
+    if (!isDbConnected()) {
+      const user = inMemoryUsers.find((u) => u.email.toLowerCase() === email.toLowerCase());
+      if (!user) {
+        return sendSuccess(res, null, 'If that email address exists in our database, we have sent a verification OTP.');
+      }
+      const otp = await createAndSendOtp(email, 'Reset');
+      return sendSuccess(
+        res,
+        { devOtp: otp },
+        'If that email address exists in our database, we have sent a verification OTP.'
+      );
+    }
 
     const user = await User.findOne({ email });
     if (!user) {
