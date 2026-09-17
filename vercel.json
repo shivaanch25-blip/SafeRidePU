@@ -6,7 +6,7 @@
   "rewrites": [
     {
       "source": "/api/(.*)",
-      "destination": "https://saferidepu.onrender.com/api/$1"
+      "destination": "https://saferidepu-backend.onrender.com/api/$1"
     },
     {
       "source": "/(.*)",
