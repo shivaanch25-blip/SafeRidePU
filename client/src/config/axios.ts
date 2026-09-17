@@ -10,7 +10,6 @@ const api = axios.create({
   },
 });
 
-// Axios request interceptor to attach JWT Bearer token from localStorage
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('saferide_token');
   if (token && config.headers) {
