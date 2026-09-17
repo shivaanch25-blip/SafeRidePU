@@ -4,7 +4,7 @@ services:
     runtime: node
     region: singapore
     plan: free
-    buildCommand: npm install --include=dev && npm run build
+    buildCommand: npm install --include=dev && npm run build:server
     startCommand: npm start
     healthCheckPath: /api/v1/health
     envVars:
@@ -18,6 +18,8 @@ services:
         sync: false
       - key: MONGO_URI
         sync: false
+      - key: JWT_SECRET
+        generateValue: true
       - key: JWT_ACCESS_SECRET
         generateValue: true
       - key: JWT_REFRESH_SECRET

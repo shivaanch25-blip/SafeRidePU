@@ -4,7 +4,7 @@ import { AppError } from '../utils/appError.js';
 import { Types } from 'mongoose';
 import { isDbConnected } from '../config/db.js';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_super_secret_key_change_in_production';
+const JWT_SECRET = process.env.JWT_SECRET || process.env.JWT_ACCESS_SECRET || 'your_jwt_super_secret_key_change_in_production';
 const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'your_jwt_refresh_super_secret_key_change_in_production';
 const ACCESS_EXPIRATION = process.env.JWT_ACCESS_EXPIRATION || '15m';
 const REFRESH_EXPIRATION = process.env.JWT_REFRESH_EXPIRATION || '7d';
