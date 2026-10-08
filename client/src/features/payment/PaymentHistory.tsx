@@ -19,20 +19,21 @@ export const PaymentHistory: React.FC = () => {
   const [payments, setPayments] = useState<IPaymentRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    const fetchHistory = async () => {
-      try {
-        const res = await api.get('/payments/history');
-        if (res.data?.status === 'success') {
-          setPayments(res.data.data);
-        }
-      } catch (err) {
-        toast.error('Could not load payment history.');
-      } finally {
-        setIsLoading(false);
+  const fetchHistory = async () => {
+    setIsLoading(true);
+    try {
+      const res = await api.get('/payments/history');
+      if (res.data?.status === 'success') {
+        setPayments(res.data.data);
       }
-    };
+    } catch (err) {
+      toast.error('Could not load payment history.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
+  useEffect(() => {
     fetchHistory();
   }, []);
 
@@ -65,10 +66,17 @@ export const PaymentHistory: React.FC = () => {
         <div className="w-10 h-10 rounded-xl bg-brand-100 dark:bg-brand-950 text-brand-600 dark:text-brand-400 flex items-center justify-center text-xl">
           <FiCreditCard />
         </div>
-        <div>
+        <div className="flex-1">
           <h3 className="text-xl font-bold text-gray-900 dark:text-white">Payment Transactions</h3>
-          <p className="text-xs text-gray-500">Record of all Razorpay payments for your campus rides.</p>
+          <p className="text-xs text-gray-500">Record of all Razorpay & UPI transactions for your campus rides.</p>
         </div>
+        <button
+          onClick={fetchHistory}
+          disabled={isLoading}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 text-xs font-semibold text-gray-700 dark:text-gray-300 transition cursor-pointer"
+        >
+          <span className={isLoading ? 'animate-spin' : ''}>🔄</span> Refresh
+        </button>
       </div>
 
       {isLoading ? (
@@ -91,7 +99,7 @@ export const PaymentHistory: React.FC = () => {
               {payments.map((p) => (
                 <tr key={p._id} className="hover:bg-gray-50/50 dark:hover:bg-gray-750/50 transition">
                   <td className="py-3.5 px-4 font-mono text-xs">{p.receipt}</td>
-                  <td className="py-3.5 px-4 text-xs">{new Date(p.createdAt).toLocaleDateString()}</td>
+                  <td className="py-3.5 px-4 text-xs">{new Date(p.createdAt).toLocaleString()}</td>
                   <td className="py-3.5 px-4 font-bold text-gray-900 dark:text-white">₹{p.amount.toFixed(2)}</td>
                   <td className="py-3.5 px-4 text-xs">{p.method || 'UPI/Card'}</td>
                   <td className="py-3.5 px-4">{getStatusBadge(p.status)}</td>

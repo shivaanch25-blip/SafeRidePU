@@ -38,3 +38,6 @@ server/.env
 # OS metadata
 .DS_Store
 Thumbs.db
+
+# Scratch and test scripts
+scratch/

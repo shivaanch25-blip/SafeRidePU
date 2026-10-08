@@ -104,6 +104,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
             razorpayPaymentId: `pay_sim_${Date.now()}`,
             razorpaySignature: `sim_sig_${Date.now()}`,
             method: 'UPI / Sandbox',
+            amount,
           });
           toast.success('🎉 Ride Payment Successful! (Sandbox Verified)');
           if (onPaymentSuccess) {
@@ -134,6 +135,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
           razorpayPaymentId: `pay_sim_${Date.now()}`,
           razorpaySignature: `sim_sig_${Date.now()}`,
           method: 'UPI / Sandbox',
+          amount,
         });
         toast.success('🎉 Ride Payment Successful!');
         if (onPaymentSuccess) {

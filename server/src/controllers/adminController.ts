@@ -7,6 +7,8 @@ import { sendSuccess } from '../utils/response.js';
 import { isDbConnected } from '../config/db.js';
 import { inMemoryUsers } from './authController.js';
 import { inMemoryRides } from './rideController.js';
+import { getAllActiveSessions, adminRevokeSession } from '../services/sessionService.js';
+import { getAllPayments } from '../services/paymentService.js';
 import bcrypt from 'bcryptjs';
 
 // In-memory mock SOS alerts for offline/demo mode
@@ -287,4 +289,36 @@ export const registerDriver = async (req: Request, res: Response, next: NextFunc
     next(error);
   }
 };
+
+// 8. Admin Device Sessions List
+export const getAdminSessions = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const sessions = await getAllActiveSessions();
+    return sendSuccess(res, sessions, 'All campus device sessions retrieved.');
+  } catch (error) {
+    next(error);
+  }
+};
+
+// 9. Admin Revoke Device Session
+export const revokeAdminSession = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { id } = req.params;
+    await adminRevokeSession(id);
+    return sendSuccess(res, null, 'Session revoked successfully by administrator.');
+  } catch (error) {
+    next(error);
+  }
+};
+
+// 10. Admin Campus Payments List
+export const getAdminPayments = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const payments = await getAllPayments();
+    return sendSuccess(res, payments, 'Campus payment transactions retrieved.');
+  } catch (error) {
+    next(error);
+  }
+};
+
 

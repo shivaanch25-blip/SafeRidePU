@@ -3,6 +3,8 @@ import { BrowserRouter as Router, Routes, Route, Link, useNavigate } from 'react
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider, useAuth } from './contexts/AuthContext.js';
 import ProtectedRoute from './routes/ProtectedRoutes.js';
+import RoleGuard from './routes/RoleGuard.js';
+import { ROLES } from './types/shared.js';
 
 // Auth feature views
 import Login from './features/authentication/Login.js';
@@ -31,30 +33,51 @@ import DriverDashboard from './features/driver/DriverDashboard.js';
 import AdminDashboard from './features/admin/AdminDashboard.js';
 
 // Icons
-import { FiShield, FiLogOut, FiCreditCard, FiSmartphone, FiKey, FiAlertTriangle, FiTruck } from 'react-icons/fi';
+import {
+  FiShield,
+  FiLogOut,
+  FiCreditCard,
+  FiSmartphone,
+  FiKey,
+  FiAlertTriangle,
+  FiTruck,
+  FiMenu,
+  FiX,
+  FiCompass,
+} from 'react-icons/fi';
 
 const NavigationBar: React.FC<{ onOpenSOS: () => void }> = ({ onOpenSOS }) => {
   const { user, isAuthenticated, logout } = useAuth();
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const navigate = useNavigate();
 
   const handleLogout = async () => {
+    setIsMobileMenuOpen(false);
     await logout();
     navigate('/login');
   };
+
+  const isDriver = user?.role === ROLES.DRIVER;
+  const isAdmin = user?.role === ROLES.ADMIN || user?.role === ROLES.SECURITY_OFFICE;
+  const isRider = user?.role === ROLES.RIDER || (!isDriver && !isAdmin);
 
   return (
     <header className="bg-brand-800 text-white sticky top-0 z-40 shadow-md">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex justify-between items-center">
         {/* Brand Logo & Title */}
-        <Link to="/" className="flex items-center gap-2.5 font-black text-xl tracking-tight">
+        <Link
+          to={isDriver ? '/driver' : isAdmin ? '/admin' : '/'}
+          onClick={() => setIsMobileMenuOpen(false)}
+          className="flex items-center gap-2.5 font-black text-xl tracking-tight"
+        >
           <div className="w-9 h-9 rounded-xl bg-white text-brand-800 flex items-center justify-center font-bold text-base shadow-sm">
             PU
           </div>
           <span>SafeRide PU</span>
         </Link>
 
-        {/* Center / Right Navigation Links */}
-        <nav className="flex items-center gap-3 text-sm font-medium">
+        {/* Desktop Navigation Links */}
+        <nav className="hidden md:flex items-center gap-3 text-sm font-medium">
           {/* Emergency SOS Button */}
           <button
             onClick={onOpenSOS}
@@ -66,46 +89,59 @@ const NavigationBar: React.FC<{ onOpenSOS: () => void }> = ({ onOpenSOS }) => {
 
           <Link
             to="/"
-            className="hover:text-brand-200 transition px-2.5 py-1.5 rounded-lg"
+            className="hover:text-brand-200 transition px-2.5 py-1.5 rounded-lg flex items-center gap-1.5 text-xs"
           >
-            Campus Map
+            <FiCompass className="text-xs" /> Campus Map
           </Link>
 
           {isAuthenticated ? (
             <>
-              <Link
-                to="/driver"
-                className="hover:text-amber-200 text-amber-300 font-bold transition flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs"
-              >
-                <FiTruck className="text-xs" /> Driver
-              </Link>
-              <Link
-                to="/admin"
-                className="hover:text-purple-200 text-purple-300 font-bold transition flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs"
-              >
-                <FiShield className="text-xs" /> Admin
-              </Link>
-              <Link
-                to="/payments"
-                className="hover:text-brand-200 transition flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg"
-              >
-                <FiCreditCard className="text-xs" /> Payments
-              </Link>
-              <Link
-                to="/devices"
-                className="hover:text-brand-200 transition flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg"
-              >
-                <FiSmartphone className="text-xs" /> Devices
-              </Link>
+              {/* STUDENT / RIDER SPECIFIC NAVIGATION */}
+              {isRider && (
+                <Link
+                  to="/payments"
+                  className="hover:text-brand-200 transition flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs"
+                >
+                  <FiCreditCard className="text-xs" /> My Payments
+                </Link>
+              )}
 
-              {/* User Role Badge & Dropdown / Logout */}
+              {/* DRIVER SPECIFIC NAVIGATION */}
+              {isDriver && (
+                <Link
+                  to="/driver"
+                  className="hover:text-amber-200 text-amber-300 font-bold transition flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs"
+                >
+                  <FiTruck className="text-xs" /> Driver Console
+                </Link>
+              )}
+
+              {/* ADMIN SPECIFIC NAVIGATION */}
+              {isAdmin && (
+                <>
+                  <Link
+                    to="/admin"
+                    className="hover:text-purple-200 text-purple-300 font-bold transition flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs"
+                  >
+                    <FiShield className="text-xs" /> Admin Control
+                  </Link>
+                  <Link
+                    to="/devices"
+                    className="hover:text-brand-200 transition flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs"
+                  >
+                    <FiSmartphone className="text-xs" /> Devices
+                  </Link>
+                </>
+              )}
+
+              {/* User Role Badge & Settings / Logout */}
               <div className="flex items-center gap-3 pl-3 border-l border-brand-700">
-                <div className="hidden sm:block text-right">
+                <div className="text-right">
                   <div className="text-xs font-bold leading-tight">
                     {user?.firstName} {user?.lastName}
                   </div>
                   <div className="text-[10px] text-brand-200 uppercase tracking-wider font-semibold">
-                    {user?.role}
+                    {user?.role === ROLES.RIDER ? 'Student / Rider' : user?.role}
                   </div>
                 </div>
 
@@ -136,14 +172,134 @@ const NavigationBar: React.FC<{ onOpenSOS: () => void }> = ({ onOpenSOS }) => {
               </Link>
               <Link
                 to="/register"
-                className="hidden sm:inline-block px-4 py-2 text-xs font-bold bg-brand-700 hover:bg-brand-650 text-white rounded-xl transition border border-brand-600"
+                className="px-4 py-2 text-xs font-bold bg-brand-700 hover:bg-brand-650 text-white rounded-xl transition border border-brand-600"
               >
                 Register
               </Link>
             </div>
           )}
         </nav>
+
+        {/* Mobile Action Controls (SOS & Hamburger) */}
+        <div className="flex items-center gap-2 md:hidden">
+          <button
+            onClick={onOpenSOS}
+            className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl font-bold text-xs bg-red-600 text-white shadow animate-pulse border border-red-400"
+          >
+            <FiAlertTriangle /> SOS
+          </button>
+          <button
+            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            className="p-2 rounded-xl text-white hover:bg-brand-700 transition cursor-pointer"
+          >
+            {isMobileMenuOpen ? <FiX className="text-xl" /> : <FiMenu className="text-xl" />}
+          </button>
+        </div>
       </div>
+
+      {/* Mobile Dropdown Drawer */}
+      {isMobileMenuOpen && (
+        <div className="md:hidden bg-brand-900 border-t border-brand-700 px-4 pt-3 pb-5 space-y-3 animate-fadeIn">
+          {isAuthenticated && user && (
+            <div className="p-3 bg-brand-800/80 rounded-xl flex items-center justify-between border border-brand-700">
+              <div>
+                <div className="font-bold text-sm">{user.firstName} {user.lastName}</div>
+                <div className="text-[10px] text-brand-300 font-semibold uppercase">
+                  {user.role === ROLES.RIDER ? 'Student / Rider' : user.role}
+                </div>
+              </div>
+              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-400/30">
+                Active
+              </span>
+            </div>
+          )}
+
+          <div className="flex flex-col space-y-1 text-sm font-semibold">
+            <Link
+              to="/"
+              onClick={() => setIsMobileMenuOpen(false)}
+              className="px-3 py-2 rounded-xl hover:bg-brand-800 transition flex items-center gap-2"
+            >
+              <FiCompass /> Campus Map
+            </Link>
+
+            {isAuthenticated ? (
+              <>
+                {isRider && (
+                  <Link
+                    to="/payments"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="px-3 py-2 rounded-xl hover:bg-brand-800 transition flex items-center gap-2"
+                  >
+                    <FiCreditCard /> My Payments
+                  </Link>
+                )}
+
+                {isDriver && (
+                  <Link
+                    to="/driver"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="px-3 py-2 rounded-xl text-amber-300 hover:bg-brand-800 transition flex items-center gap-2"
+                  >
+                    <FiTruck /> Driver Console
+                  </Link>
+                )}
+
+                {isAdmin && (
+                  <>
+                    <Link
+                      to="/admin"
+                      onClick={() => setIsMobileMenuOpen(false)}
+                      className="px-3 py-2 rounded-xl text-purple-300 hover:bg-brand-800 transition flex items-center gap-2"
+                    >
+                      <FiShield /> Admin Control
+                    </Link>
+                    <Link
+                      to="/devices"
+                      onClick={() => setIsMobileMenuOpen(false)}
+                      className="px-3 py-2 rounded-xl hover:bg-brand-800 transition flex items-center gap-2"
+                    >
+                      <FiSmartphone /> Devices
+                    </Link>
+                  </>
+                )}
+
+                <Link
+                  to="/change-password"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="px-3 py-2 rounded-xl hover:bg-brand-800 transition flex items-center gap-2"
+                >
+                  <FiKey /> Change Password
+                </Link>
+
+                <button
+                  onClick={handleLogout}
+                  className="text-left px-3 py-2 rounded-xl text-red-300 hover:bg-red-950/40 transition flex items-center gap-2 cursor-pointer w-full"
+                >
+                  <FiLogOut /> Sign Out
+                </button>
+              </>
+            ) : (
+              <div className="pt-2 flex flex-col gap-2">
+                <Link
+                  to="/login"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="w-full text-center py-2.5 rounded-xl font-bold bg-white text-brand-800"
+                >
+                  Sign In
+                </Link>
+                <Link
+                  to="/register"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="w-full text-center py-2.5 rounded-xl font-bold bg-brand-700 text-white border border-brand-600"
+                >
+                  Register
+                </Link>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </header>
   );
 };
@@ -207,10 +363,22 @@ function App() {
 
               {/* Protected Authenticated Routes */}
               <Route element={<ProtectedRoute />}>
-                <Route path="/driver" element={<DriverDashboard />} />
-                <Route path="/admin" element={<AdminDashboard />} />
-                <Route path="/payments" element={<PaymentHistory />} />
-                <Route path="/devices" element={<DeviceManagement />} />
+                {/* Rider Allowed Routes */}
+                <Route element={<RoleGuard allowedRoles={[ROLES.RIDER, ROLES.ADMIN]} />}>
+                  <Route path="/payments" element={<PaymentHistory />} />
+                </Route>
+
+                {/* Driver Allowed Routes */}
+                <Route element={<RoleGuard allowedRoles={[ROLES.DRIVER, ROLES.ADMIN]} />}>
+                  <Route path="/driver" element={<DriverDashboard />} />
+                </Route>
+
+                {/* Admin Allowed Routes */}
+                <Route element={<RoleGuard allowedRoles={[ROLES.ADMIN, ROLES.SECURITY_OFFICE]} />}>
+                  <Route path="/admin" element={<AdminDashboard />} />
+                  <Route path="/devices" element={<DeviceManagement />} />
+                </Route>
+
                 <Route path="/change-password" element={<ChangePassword />} />
               </Route>
 

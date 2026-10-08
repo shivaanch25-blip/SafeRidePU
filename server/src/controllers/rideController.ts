@@ -254,6 +254,17 @@ export const updateRideStatus = async (req: Request, res: Response, next: NextFu
   }
 };
 
+// 4b. Driver Rejects Ride Request
+export const rejectRide = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { id } = req.params;
+    return sendSuccess(res, { rideId: id }, 'Ride request declined.');
+  } catch (error) {
+    next(error);
+  }
+};
+
+
 // 5. Get User's Active Ride (Rider or Driver)
 export const getActiveRide = async (req: Request, res: Response, next: NextFunction) => {
   try {

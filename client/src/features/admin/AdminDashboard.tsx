@@ -15,6 +15,9 @@ import {
   FiDatabase,
   FiPlus,
   FiX,
+  FiCreditCard,
+  FiSmartphone,
+  FiTrash2,
 } from 'react-icons/fi';
 
 interface IAdminStats {
@@ -76,11 +79,13 @@ interface ISosItem {
 }
 
 export const AdminDashboard: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'drivers' | 'rides' | 'users' | 'sos' | 'health'>('drivers');
+  const [activeTab, setActiveTab] = useState<'drivers' | 'rides' | 'users' | 'payments' | 'devices' | 'sos' | 'health'>('drivers');
   const [stats, setStats] = useState<IAdminStats | null>(null);
   const [users, setUsers] = useState<IUserItem[]>([]);
   const [rides, setRides] = useState<IRideItem[]>([]);
   const [sosAlerts, setSosAlerts] = useState<ISosItem[]>([]);
+  const [payments, setPayments] = useState<any[]>([]);
+  const [sessions, setSessions] = useState<any[]>([]);
 
   // Search & Filter States
   const [userSearch, setUserSearch] = useState('');
@@ -105,19 +110,33 @@ export const AdminDashboard: React.FC = () => {
   // Fetch admin dashboard data
   const fetchAdminData = async () => {
     try {
-      const [statsRes, usersRes, ridesRes, sosRes] = await Promise.all([
+      const [statsRes, usersRes, ridesRes, sosRes, paymentsRes, sessionsRes] = await Promise.all([
         api.get('/admin/stats'),
         api.get('/admin/users'),
         api.get('/admin/rides'),
         api.get('/admin/sos-alerts'),
+        api.get('/admin/payments').catch(() => ({ data: { data: [] } })),
+        api.get('/admin/sessions').catch(() => ({ data: { data: [] } })),
       ]);
 
       if (statsRes.data?.data?.stats) setStats(statsRes.data.data.stats);
       if (usersRes.data?.data?.users) setUsers(usersRes.data.data.users);
       if (ridesRes.data?.data?.rides) setRides(ridesRes.data.data.rides);
       if (sosRes.data?.data?.alerts) setSosAlerts(sosRes.data.data.alerts);
+      if (paymentsRes.data?.data) setPayments(paymentsRes.data.data);
+      if (sessionsRes.data?.data) setSessions(sessionsRes.data.data);
     } catch {
       // Tolerate temporary connection drop
+    }
+  };
+
+  const handleRevokeSession = async (sessionId: string) => {
+    try {
+      await api.delete(`/admin/sessions/${sessionId}`);
+      toast.success('Device session revoked remotely.');
+      setSessions((prev) => prev.filter((s) => s._id !== sessionId));
+    } catch {
+      toast.error('Failed to revoke session.');
     }
   };
 
@@ -322,6 +341,28 @@ export const AdminDashboard: React.FC = () => {
           }`}
         >
           <FiUsers /> Campus Users ({users.length})
+        </button>
+
+        <button
+          onClick={() => setActiveTab('payments')}
+          className={`pb-3 cursor-pointer flex items-center gap-2 border-b-2 transition ${
+            activeTab === 'payments'
+              ? 'border-purple-600 text-purple-600 dark:text-purple-400'
+              : 'border-transparent text-gray-500 hover:text-gray-800 dark:hover:text-gray-200'
+          }`}
+        >
+          <FiCreditCard /> Payments & Revenue ({payments.length})
+        </button>
+
+        <button
+          onClick={() => setActiveTab('devices')}
+          className={`pb-3 cursor-pointer flex items-center gap-2 border-b-2 transition ${
+            activeTab === 'devices'
+              ? 'border-purple-600 text-purple-600 dark:text-purple-400'
+              : 'border-transparent text-gray-500 hover:text-gray-800 dark:hover:text-gray-200'
+          }`}
+        >
+          <FiSmartphone /> Devices & Sessions ({sessions.length})
         </button>
 
         <button
@@ -726,6 +767,161 @@ export const AdminDashboard: React.FC = () => {
               </p>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* TAB: CAMPUS PAYMENTS & REVENUE */}
+      {activeTab === 'payments' && (
+        <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700 p-6 space-y-6">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div>
+              <h3 className="text-lg font-black text-gray-900 dark:text-white flex items-center gap-2">
+                <FiCreditCard className="text-purple-600 dark:text-purple-400" /> Campus Payments & Revenue Ledger
+              </h3>
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                Audit trail of all Razorpay & UPI transactions across the Parul University transit network
+              </p>
+            </div>
+            <button
+              onClick={fetchAdminData}
+              className="px-3.5 py-1.5 rounded-xl border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 text-xs font-semibold text-gray-700 dark:text-gray-300 transition flex items-center gap-1.5"
+            >
+              <FiRefreshCw className="text-xs" /> Refresh Ledger
+            </button>
+          </div>
+
+          {payments.length === 0 ? (
+            <div className="py-12 text-center text-xs text-gray-500">No payment transactions found.</div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs text-gray-600 dark:text-gray-300">
+                <thead className="bg-gray-50 dark:bg-gray-750 text-[10px] font-bold text-gray-400 uppercase tracking-wider border-b border-gray-200 dark:border-gray-700">
+                  <tr>
+                    <th className="py-3 px-4">Receipt</th>
+                    <th className="py-3 px-4">Date & Time</th>
+                    <th className="py-3 px-4">Amount</th>
+                    <th className="py-3 px-4">Payment Method</th>
+                    <th className="py-3 px-4">Transaction ID</th>
+                    <th className="py-3 px-4">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+                  {payments.map((p) => (
+                    <tr key={p._id} className="hover:bg-gray-50/50 dark:hover:bg-gray-750/50 transition">
+                      <td className="py-3.5 px-4 font-mono font-bold text-gray-900 dark:text-white">
+                        {p.receipt}
+                      </td>
+                      <td className="py-3.5 px-4">
+                        {new Date(p.createdAt).toLocaleString()}
+                      </td>
+                      <td className="py-3.5 px-4 font-bold text-emerald-600 dark:text-emerald-400 text-sm">
+                        ₹{Number(p.amount).toFixed(2)}
+                      </td>
+                      <td className="py-3.5 px-4 font-medium">
+                        {p.method || 'UPI / Razorpay'}
+                      </td>
+                      <td className="py-3.5 px-4 font-mono text-[10px] text-gray-500">
+                        {p.razorpayPaymentId || p.razorpayOrderId}
+                      </td>
+                      <td className="py-3.5 px-4">
+                        <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
+                          p.status === 'COMPLETED'
+                            ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300'
+                            : 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300'
+                        }`}>
+                          <FiCheckCircle className="text-[10px]" /> {p.status}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* TAB: DEVICES & SESSIONS AUDIT */}
+      {activeTab === 'devices' && (
+        <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700 p-6 space-y-6">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div>
+              <h3 className="text-lg font-black text-gray-900 dark:text-white flex items-center gap-2">
+                <FiSmartphone className="text-purple-600 dark:text-purple-400" /> Institutional Device & Session Control
+              </h3>
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                Monitor logged-in devices across campus and remotely terminate unauthorized sessions
+              </p>
+            </div>
+            <button
+              onClick={fetchAdminData}
+              className="px-3.5 py-1.5 rounded-xl border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 text-xs font-semibold text-gray-700 dark:text-gray-300 transition flex items-center gap-1.5"
+            >
+              <FiRefreshCw className="text-xs" /> Refresh Sessions
+            </button>
+          </div>
+
+          {sessions.length === 0 ? (
+            <div className="py-12 text-center text-xs text-gray-500">No active device sessions found.</div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs text-gray-600 dark:text-gray-300">
+                <thead className="bg-gray-50 dark:bg-gray-750 text-[10px] font-bold text-gray-400 uppercase tracking-wider border-b border-gray-200 dark:border-gray-700">
+                  <tr>
+                    <th className="py-3 px-4">User Account</th>
+                    <th className="py-3 px-4">Device</th>
+                    <th className="py-3 px-4">IP Address</th>
+                    <th className="py-3 px-4">Last Active</th>
+                    <th className="py-3 px-4 text-right">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+                  {sessions.map((s) => (
+                    <tr key={s._id} className="hover:bg-gray-50/50 dark:hover:bg-gray-750/50 transition">
+                      <td className="py-3.5 px-4">
+                        <span className="font-bold text-gray-900 dark:text-white block">
+                          {s.userName || s.userEmail || 'Campus User'}
+                        </span>
+                        <span className="text-[10px] text-gray-500 font-mono">
+                          {s.userEmail || s.userId}
+                        </span>
+                      </td>
+                      <td className="py-3.5 px-4">
+                        <div className="flex items-center gap-2">
+                          <span className="p-1.5 rounded-lg bg-gray-100 dark:bg-gray-700 text-purple-600 dark:text-purple-400">
+                            {s.deviceName?.toLowerCase().includes('mobile') ? <FiSmartphone /> : <FiServer />}
+                          </span>
+                          <div>
+                            <span className="font-semibold text-gray-800 dark:text-gray-200 block">
+                              {s.deviceName}
+                            </span>
+                            <span className="text-[10px] text-gray-400 line-clamp-1 max-w-xs">
+                              {s.userAgent}
+                            </span>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="py-3.5 px-4 font-mono text-gray-600 dark:text-gray-300">
+                        {s.ipAddress}
+                      </td>
+                      <td className="py-3.5 px-4 text-gray-500">
+                        {new Date(s.lastActive).toLocaleString()}
+                      </td>
+                      <td className="py-3.5 px-4 text-right">
+                        <button
+                          onClick={() => handleRevokeSession(s._id)}
+                          className="px-3 py-1.5 rounded-xl bg-red-50 hover:bg-red-100 text-red-600 dark:bg-red-950/40 dark:hover:bg-red-900/60 dark:text-red-400 font-bold transition flex items-center gap-1.5 ml-auto cursor-pointer text-xs"
+                          title="Terminate session remotely"
+                        >
+                          <FiTrash2 /> Revoke
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       )}
 

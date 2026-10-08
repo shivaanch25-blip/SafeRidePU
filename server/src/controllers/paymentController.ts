@@ -33,7 +33,7 @@ export const verifyPayment = async (req: Request, res: Response, next: NextFunct
       throw new AppError('Authentication required.', 401);
     }
 
-    const { razorpayOrderId, razorpayPaymentId, razorpaySignature, method } = req.body;
+    const { razorpayOrderId, razorpayPaymentId, razorpaySignature, method, amount } = req.body;
 
     if (!razorpayOrderId || !razorpayPaymentId || !razorpaySignature) {
       throw new AppError('Razorpay order ID, payment ID, and signature are required.', 400);
@@ -45,6 +45,7 @@ export const verifyPayment = async (req: Request, res: Response, next: NextFunct
       razorpayPaymentId,
       razorpaySignature,
       method,
+      amount: typeof amount === 'number' ? amount : undefined,
     });
 
     return sendSuccess(res, payment, 'Payment verified and confirmed successfully.');
@@ -65,3 +66,17 @@ export const getHistory = async (req: Request, res: Response, next: NextFunction
     next(error);
   }
 };
+
+export const getAllPayments = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    if (!req.user) {
+      throw new AppError('Authentication required.', 401);
+    }
+
+    const allPayments = await paymentService.getAllPayments();
+    return sendSuccess(res, allPayments, 'All payment transactions retrieved successfully.');
+  } catch (error) {
+    next(error);
+  }
+};
+

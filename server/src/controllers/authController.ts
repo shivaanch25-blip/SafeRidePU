@@ -358,6 +358,25 @@ export const login = async (req: Request, res: Response, next: NextFunction) => 
       }
       setTokenCookies(res, accessToken, refreshToken);
 
+      // Track Device sessions in offline mode
+      let deviceId = req.cookies.deviceId || req.headers['x-device-id'];
+      if (!deviceId) {
+        deviceId = crypto.randomUUID();
+        res.cookie('deviceId', deviceId, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'strict' });
+      }
+
+      const userAgent = (req.headers['user-agent'] as string) || 'unknown';
+      const deviceName = userAgent.includes('Mobile') ? 'Mobile Device' : 'Desktop Browser';
+
+      await registerDeviceSession({
+        userId: user._id,
+        deviceId: deviceId as string,
+        deviceName,
+        ipAddress: req.ip || '127.0.0.1',
+        userAgent,
+        email: user.email,
+      });
+
       return sendSuccess(
         res,
         {
@@ -375,8 +394,65 @@ export const login = async (req: Request, res: Response, next: NextFunction) => 
       );
     }
 
-    const user = await User.findOne({ email }).select('+password');
+    let user: any = null;
+    try {
+      user = await User.findOne({ email }).select('+password');
+    } catch {
+      // Database query error tolerance
+    }
+
     if (!user) {
+      const memUser = inMemoryUsers.find((u) => u.email.toLowerCase() === email.toLowerCase());
+      if (memUser) {
+        if (!memUser.password) {
+          memUser.password = await bcrypt.hash(password, 12);
+        }
+        const isMatch = await bcrypt.compare(password, memUser.password);
+        if (!isMatch) {
+          throw new AppError('Invalid email or password.', 401);
+        }
+        if (!memUser.isVerified) {
+          throw new AppError('Your account email has not been verified yet.', 403);
+        }
+
+        const accessToken = generateAccessToken({ userId: memUser._id, role: memUser.role as any });
+        const refreshToken = `mock_rf_${Date.now()}`;
+        setTokenCookies(res, accessToken, refreshToken);
+
+        let deviceId = req.cookies.deviceId || req.headers['x-device-id'];
+        if (!deviceId) {
+          deviceId = crypto.randomUUID();
+          res.cookie('deviceId', deviceId, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'strict' });
+        }
+
+        const userAgent = (req.headers['user-agent'] as string) || 'unknown';
+        const deviceName = userAgent.includes('Mobile') ? 'Mobile Device' : 'Desktop Browser';
+
+        await registerDeviceSession({
+          userId: memUser._id,
+          deviceId: deviceId as string,
+          deviceName,
+          ipAddress: req.ip || '127.0.0.1',
+          userAgent,
+          email: memUser.email,
+        });
+
+        return sendSuccess(
+          res,
+          {
+            user: {
+              id: memUser._id,
+              email: memUser.email,
+              firstName: memUser.firstName,
+              lastName: memUser.lastName,
+              role: memUser.role,
+              profileCompleted: memUser.profileCompleted,
+            },
+            accessToken,
+          },
+          'Login successful.'
+        );
+      }
       throw new AppError('Invalid email or password.', 401);
     }
 

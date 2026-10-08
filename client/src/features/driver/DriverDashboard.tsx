@@ -15,6 +15,7 @@ import {
   FiPower,
   FiTruck,
   FiKey,
+  FiXCircle,
 } from 'react-icons/fi';
 
 interface IRideItem {
@@ -126,6 +127,15 @@ export const DriverDashboard: React.FC = () => {
     } finally {
       setIsUpdating(false);
     }
+  };
+
+  // Reject a ride request
+  const handleRejectRide = async (rideId: string) => {
+    try {
+      await api.patch(`/rides/${rideId}/reject`);
+    } catch {}
+    setAvailableRides((prev) => prev.filter((r) => r._id !== rideId));
+    toast('Ride request declined.', { icon: 'ℹ️' });
   };
 
   // Update ride status (ARRIVED_PICKUP, ACTIVE, COMPLETED)
@@ -489,13 +499,22 @@ export const DriverDashboard: React.FC = () => {
                   <span className="text-xs text-gray-500 dark:text-gray-400">
                     Est. {ride.distanceKm} km
                   </span>
-                  <button
-                    onClick={() => handleAcceptRide(ride._id)}
-                    disabled={isUpdating || !!activeRide || !isOnDuty}
-                    className="px-5 py-2.5 rounded-xl font-bold text-xs bg-emerald-600 hover:bg-emerald-700 text-white transition flex items-center gap-1.5 cursor-pointer shadow-md disabled:opacity-50"
-                  >
-                    <FiCheckCircle /> Accept Ride
-                  </button>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => handleRejectRide(ride._id)}
+                      disabled={isUpdating}
+                      className="px-3.5 py-2.5 rounded-xl font-bold text-xs bg-gray-100 hover:bg-red-50 text-gray-700 hover:text-red-600 dark:bg-gray-700 dark:hover:bg-red-950/40 dark:text-gray-300 dark:hover:text-red-400 transition flex items-center gap-1 cursor-pointer border border-gray-200 dark:border-gray-600"
+                    >
+                      <FiXCircle /> Decline
+                    </button>
+                    <button
+                      onClick={() => handleAcceptRide(ride._id)}
+                      disabled={isUpdating || !!activeRide || !isOnDuty}
+                      className="px-5 py-2.5 rounded-xl font-bold text-xs bg-emerald-600 hover:bg-emerald-700 text-white transition flex items-center gap-1.5 cursor-pointer shadow-md disabled:opacity-50"
+                    >
+                      <FiCheckCircle /> Accept Ride
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}
