@@ -31,6 +31,9 @@ export interface IInMemoryUser {
   lastName: string;
   role: string;
   phoneNumber?: string;
+  vehicleModel?: string;
+  plateNumber?: string;
+  licenseNumber?: string;
   isVerified: boolean;
   status: string;
   profileCompleted: boolean;
@@ -128,7 +131,7 @@ const clearTokenCookies = (res: Response) => {
 // 1. User Registration
 export const register = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { email, password, firstName, lastName, role, phoneNumber } = req.body;
+    const { email, password, firstName, lastName, role, phoneNumber, vehicleModel, plateNumber, licenseNumber } = req.body;
 
     // Offline in-memory fallback if MongoDB is not connected locally
     if (!isDbConnected()) {
@@ -152,6 +155,9 @@ export const register = async (req: Request, res: Response, next: NextFunction) 
         lastName,
         role,
         phoneNumber,
+        vehicleModel,
+        plateNumber,
+        licenseNumber,
         isVerified: false,
         status: 'Inactive',
         profileCompleted: false,
@@ -188,6 +194,9 @@ export const register = async (req: Request, res: Response, next: NextFunction) 
       lastName,
       role,
       phoneNumber,
+      vehicleModel,
+      plateNumber,
+      licenseNumber,
       isVerified: false,
       status: 'Inactive',
       passwordHistory: [hashedPassword],

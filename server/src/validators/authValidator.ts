@@ -8,25 +8,37 @@ const institutionalEmailRegex = /^[a-zA-Z0-9._%+-]+@paruluniversity\.ac\.in$/;
 const strongPassword = z
   .string()
   .min(8, 'Password must be at least 8 characters long.')
-  .regex(/[A-Z]/, 'Password must contain at least one uppercase letter.')
-  .regex(/[a-z]/, 'Password must contain at least one lowercase letter.')
-  .regex(/[0-9]/, 'Password must contain at least one number.')
-  .regex(/[^A-Za-z0-9]/, 'Password must contain at least one special character.');
+  .regex(/[A-Z]/, 'Password must contain at least one uppercase letter (A-Z).')
+  .regex(/[a-z]/, 'Password must contain at least one lowercase letter (a-z).')
+  .regex(/[0-9]/, 'Password must contain at least one number (0-9).')
+  .regex(/[^A-Za-z0-9]/, 'Password must contain at least one special character (!@#$%^&*).');
 
 export const registerSchema = z.object({
   email: z
     .string()
     .email('Invalid email format')
-    .refine((val) => institutionalEmailRegex.test(val), {
+    .refine((val) => institutionalEmailRegex.test(val.trim().toLowerCase()), {
       message: 'Only Parul University institutional emails (@paruluniversity.ac.in) are permitted.',
     }),
   password: strongPassword,
-  firstName: z.string().min(2, 'First name must be at least 2 characters long'),
-  lastName: z.string().min(2, 'Last name must be at least 2 characters long'),
-  role: z.enum(Object.values(ROLES) as [string, ...string[]], {
-    errorMap: () => ({ message: 'Invalid user role selection.' }),
-  }),
-  phoneNumber: z.string().optional(),
+  firstName: z.string().trim().min(2, 'First name must be at least 2 characters long'),
+  lastName: z.string().trim().min(2, 'Last name must be at least 2 characters long'),
+  role: z.preprocess((val) => {
+    if (typeof val === 'string') {
+      const trimmed = val.trim().toLowerCase();
+      if (trimmed === 'rider' || trimmed === 'student') return ROLES.RIDER;
+      if (trimmed === 'driver') return ROLES.DRIVER;
+      if (trimmed === 'admin') return ROLES.ADMIN;
+      if (trimmed === 'security office' || trimmed === 'security' || trimmed === 'security_office') return ROLES.SECURITY_OFFICE;
+    }
+    return val;
+  }, z.enum(Object.values(ROLES) as [string, ...string[]], {
+    errorMap: () => ({ message: 'Invalid user role selection. Please choose Rider, Driver, or Security Office.' }),
+  })),
+  phoneNumber: z.string().trim().optional().or(z.literal('')),
+  vehicleModel: z.string().trim().optional().or(z.literal('')),
+  plateNumber: z.string().trim().optional().or(z.literal('')),
+  licenseNumber: z.string().trim().optional().or(z.literal('')),
 });
 
 export const verifyOtpSchema = z.object({

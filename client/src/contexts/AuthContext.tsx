@@ -102,7 +102,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         return response.data;
       }
     } catch (error: any) {
-      const msg = error.response?.data?.message || 'Registration failed';
+      const errData = error.response?.data;
+      let msg = errData?.message || 'Registration failed';
+      if (Array.isArray(errData?.errors) && errData.errors.length > 0) {
+        msg = errData.errors.map((e: any) => e.message).filter(Boolean).join('. ');
+      }
       toast.error(msg);
       throw error;
     } finally {

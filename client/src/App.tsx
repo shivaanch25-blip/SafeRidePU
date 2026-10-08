@@ -21,6 +21,9 @@ import SessionExpired from './features/authentication/SessionExpired.js';
 // Payment views
 import PaymentHistory from './features/payment/PaymentHistory.js';
 
+// Ride views
+import CurrentRide from './features/ride/CurrentRide.js';
+
 // Map & Transit views
 import VadodaraMap from './features/maps/VadodaraMap.js';
 
@@ -98,12 +101,20 @@ const NavigationBar: React.FC<{ onOpenSOS: () => void }> = ({ onOpenSOS }) => {
             <>
               {/* STUDENT / RIDER SPECIFIC NAVIGATION */}
               {isRider && (
-                <Link
-                  to="/payments"
-                  className="hover:text-brand-200 transition flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs"
-                >
-                  <FiCreditCard className="text-xs" /> My Payments
-                </Link>
+                <>
+                  <Link
+                    to="/current-ride"
+                    className="hover:text-amber-200 text-amber-300 font-bold transition flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs"
+                  >
+                    <FiTruck className="text-xs" /> My Ride
+                  </Link>
+                  <Link
+                    to="/payments"
+                    className="hover:text-brand-200 transition flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs"
+                  >
+                    <FiCreditCard className="text-xs" /> My Payments
+                  </Link>
+                </>
               )}
 
               {/* DRIVER SPECIFIC NAVIGATION */}
@@ -226,13 +237,22 @@ const NavigationBar: React.FC<{ onOpenSOS: () => void }> = ({ onOpenSOS }) => {
             {isAuthenticated ? (
               <>
                 {isRider && (
-                  <Link
-                    to="/payments"
-                    onClick={() => setIsMobileMenuOpen(false)}
-                    className="px-3 py-2 rounded-xl hover:bg-brand-800 transition flex items-center gap-2"
-                  >
-                    <FiCreditCard /> My Payments
-                  </Link>
+                  <>
+                    <Link
+                      to="/current-ride"
+                      onClick={() => setIsMobileMenuOpen(false)}
+                      className="px-3 py-2 rounded-xl text-amber-300 hover:bg-brand-800 transition flex items-center gap-2 font-bold"
+                    >
+                      <FiTruck /> My Ride
+                    </Link>
+                    <Link
+                      to="/payments"
+                      onClick={() => setIsMobileMenuOpen(false)}
+                      className="px-3 py-2 rounded-xl hover:bg-brand-800 transition flex items-center gap-2"
+                    >
+                      <FiCreditCard /> My Payments
+                    </Link>
+                  </>
                 )}
 
                 {isDriver && (
@@ -365,6 +385,8 @@ function App() {
               <Route element={<ProtectedRoute />}>
                 {/* Rider Allowed Routes */}
                 <Route element={<RoleGuard allowedRoles={[ROLES.RIDER, ROLES.ADMIN]} />}>
+                  <Route path="/current-ride" element={<CurrentRide />} />
+                  <Route path="/my-ride" element={<CurrentRide />} />
                   <Route path="/payments" element={<PaymentHistory />} />
                 </Route>
 

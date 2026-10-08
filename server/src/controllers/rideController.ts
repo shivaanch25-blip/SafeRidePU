@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
+import mongoose from 'mongoose';
 import { Ride, IRide } from '../models/Ride.js';
 import { AppError } from '../utils/appError.js';
 import { sendSuccess } from '../utils/response.js';
@@ -161,31 +162,30 @@ export const acceptRide = async (req: Request, res: Response, next: NextFunction
 
     const driverName = `${user.firstName} ${user.lastName}`;
     const driverPhone = user.phoneNumber || '+91 9876543210';
-    const driverVehicle = 'Maruti Ertiga (GJ-06-PU-2024)';
+    const driverVehicle = (user as any).vehicleModel || 'Maruti Ertiga (GJ-06-PU-2024)';
 
-    if (!isDbConnected()) {
-      const ride = inMemoryRides.find((r) => r._id === id);
-      if (!ride) {
-        throw new AppError('Ride not found.', 404);
-      }
-      if (ride.status !== RIDE_STATUS.REQUESTED) {
-        throw new AppError('Ride is no longer available.', 400);
-      }
-
-      ride.driver = user._id.toString();
-      ride.driverName = driverName;
-      ride.driverPhone = driverPhone;
-      ride.driverVehicle = driverVehicle;
-      ride.status = RIDE_STATUS.ASSIGNED;
-      ride.updatedAt = new Date();
-
-      return sendSuccess(res, { ride }, 'Ride accepted! Navigation route and rider contact details unlocked.');
+    let ride = null;
+    if (isDbConnected() && mongoose.isValidObjectId(id)) {
+      ride = await Ride.findById(id);
     }
 
-    const ride = await Ride.findById(id);
     if (!ride) {
+      const memRide = inMemoryRides.find((r) => r._id === id);
+      if (memRide) {
+        if (memRide.status !== RIDE_STATUS.REQUESTED) {
+          throw new AppError('Ride is no longer available.', 400);
+        }
+        memRide.driver = user._id.toString();
+        memRide.driverName = driverName;
+        memRide.driverPhone = driverPhone;
+        memRide.driverVehicle = driverVehicle;
+        memRide.status = RIDE_STATUS.ASSIGNED;
+        memRide.updatedAt = new Date();
+        return sendSuccess(res, { ride: memRide }, 'Ride accepted! Navigation route and rider contact details unlocked.');
+      }
       throw new AppError('Ride not found.', 404);
     }
+
     if (ride.status !== RIDE_STATUS.REQUESTED) {
       throw new AppError('Ride is no longer available.', 400);
     }
@@ -213,28 +213,24 @@ export const updateRideStatus = async (req: Request, res: Response, next: NextFu
       throw new AppError('Invalid ride status.', 400);
     }
 
-    if (!isDbConnected()) {
-      const ride = inMemoryRides.find((r) => r._id === id);
-      if (!ride) {
-        throw new AppError('Ride not found.', 404);
-      }
-
-      // If starting ride, verify OTP pin if provided
-      if (status === RIDE_STATUS.ACTIVE && otp && otp !== ride.otp && otp !== '1234') {
-        throw new AppError('Incorrect OTP security pin. Please ask rider for their 4-digit start PIN.', 400);
-      }
-
-      ride.status = status;
-      ride.updatedAt = new Date();
-      if (status === RIDE_STATUS.COMPLETED) {
-        ride.completedAt = new Date();
-      }
-
-      return sendSuccess(res, { ride }, `Ride status updated to ${status}.`);
+    let ride = null;
+    if (isDbConnected() && mongoose.isValidObjectId(id)) {
+      ride = await Ride.findById(id);
     }
 
-    const ride = await Ride.findById(id);
     if (!ride) {
+      const memRide = inMemoryRides.find((r) => r._id === id);
+      if (memRide) {
+        if (status === RIDE_STATUS.ACTIVE && otp && otp !== memRide.otp && otp !== '1234') {
+          throw new AppError('Incorrect OTP security pin. Please ask rider for their 4-digit start PIN.', 400);
+        }
+        memRide.status = status;
+        memRide.updatedAt = new Date();
+        if (status === RIDE_STATUS.COMPLETED) {
+          memRide.completedAt = new Date();
+        }
+        return sendSuccess(res, { ride: memRide }, `Ride status updated to ${status}.`);
+      }
       throw new AppError('Ride not found.', 404);
     }
 
@@ -264,7 +260,6 @@ export const rejectRide = async (req: Request, res: Response, next: NextFunction
   }
 };
 
-
 // 5. Get User's Active Ride (Rider or Driver)
 export const getActiveRide = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -281,21 +276,23 @@ export const getActiveRide = async (req: Request, res: Response, next: NextFunct
       RIDE_STATUS.ACTIVE,
     ];
 
-    if (!isDbConnected()) {
-      const ride = inMemoryRides.find(
+    let ride = null;
+    if (isDbConnected()) {
+      ride = await Ride.findOne({
+        $or: [{ rider: user._id }, { driver: user._id }],
+        status: { $in: activeStatuses },
+      }).sort({ createdAt: -1 });
+    }
+
+    if (!ride) {
+      ride = inMemoryRides.find(
         (r) =>
           (r.rider === user._id.toString() || r.driver === user._id.toString()) &&
           activeStatuses.includes(r.status as any)
       );
-      return sendSuccess(res, { ride: ride || null }, 'Active ride status checked.');
     }
 
-    const ride = await Ride.findOne({
-      $or: [{ rider: user._id }, { driver: user._id }],
-      status: { $in: activeStatuses },
-    }).sort({ createdAt: -1 });
-
-    return sendSuccess(res, { ride }, 'Active ride status checked.');
+    return sendSuccess(res, { ride: ride || null }, 'Active ride status checked.');
   } catch (error) {
     next(error);
   }
@@ -309,18 +306,20 @@ export const getMyRides = async (req: Request, res: Response, next: NextFunction
       throw new AppError('Authentication required.', 401);
     }
 
-    if (!isDbConnected()) {
-      const rides = inMemoryRides.filter(
-        (r) => r.rider === user._id.toString() || r.driver === user._id.toString()
-      );
-      return sendSuccess(res, { rides }, 'Ride history retrieved.');
+    let rides: any[] = [];
+    if (isDbConnected()) {
+      rides = await Ride.find({
+        $or: [{ rider: user._id }, { driver: user._id }],
+      }).sort({ createdAt: -1 });
     }
 
-    const rides = await Ride.find({
-      $or: [{ rider: user._id }, { driver: user._id }],
-    }).sort({ createdAt: -1 });
+    if (!rides || rides.length === 0) {
+      rides = inMemoryRides.filter(
+        (r) => r.rider === user._id.toString() || r.driver === user._id.toString()
+      );
+    }
 
-    return sendSuccess(res, { rides }, 'Ride history retrieved.');
+    return sendSuccess(res, { rides: rides || [] }, 'Ride history retrieved.');
   } catch (error) {
     next(error);
   }
@@ -331,15 +330,19 @@ export const getRideById = async (req: Request, res: Response, next: NextFunctio
   try {
     const { id } = req.params;
 
-    if (!isDbConnected()) {
-      const ride = inMemoryRides.find((r) => r._id === id);
-      if (!ride) {
-        throw new AppError('Ride not found.', 404);
-      }
-      return sendSuccess(res, { ride }, 'Ride details retrieved.');
+    if (id === 'current' || id === 'active') {
+      return getActiveRide(req, res, next);
     }
 
-    const ride = await Ride.findById(id);
+    let ride = null;
+    if (isDbConnected() && mongoose.isValidObjectId(id)) {
+      ride = await Ride.findById(id);
+    }
+
+    if (!ride) {
+      ride = inMemoryRides.find((r) => r._id === id);
+    }
+
     if (!ride) {
       throw new AppError('Ride not found.', 404);
     }
@@ -354,20 +357,21 @@ export const cancelRide = async (req: Request, res: Response, next: NextFunction
   try {
     const { id } = req.params;
 
-    if (!isDbConnected()) {
-      const ride = inMemoryRides.find((r) => r._id === id);
-      if (!ride) {
-        throw new AppError('Ride not found.', 404);
-      }
-      ride.status = RIDE_STATUS.CANCELLED;
-      ride.updatedAt = new Date();
-      return sendSuccess(res, { ride }, 'Ride cancelled.');
+    let ride = null;
+    if (isDbConnected() && mongoose.isValidObjectId(id)) {
+      ride = await Ride.findById(id);
     }
 
-    const ride = await Ride.findById(id);
     if (!ride) {
+      const memRide = inMemoryRides.find((r) => r._id === id);
+      if (memRide) {
+        memRide.status = RIDE_STATUS.CANCELLED;
+        memRide.updatedAt = new Date();
+        return sendSuccess(res, { ride: memRide }, 'Ride cancelled.');
+      }
       throw new AppError('Ride not found.', 404);
     }
+
     ride.status = RIDE_STATUS.CANCELLED;
     await ride.save();
 

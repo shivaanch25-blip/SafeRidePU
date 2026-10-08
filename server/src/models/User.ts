@@ -8,6 +8,9 @@ export interface IUser extends Document {
   firstName: string;
   lastName: string;
   phoneNumber?: string;
+  vehicleModel?: string;
+  plateNumber?: string;
+  licenseNumber?: string;
   isVerified: boolean;
   failedLoginAttempts: number;
   lockUntil?: Date;
@@ -49,6 +52,18 @@ const userSchema = new Schema<IUser>(
       trim: true,
     },
     phoneNumber: {
+      type: String,
+      trim: true,
+    },
+    vehicleModel: {
+      type: String,
+      trim: true,
+    },
+    plateNumber: {
+      type: String,
+      trim: true,
+    },
+    licenseNumber: {
       type: String,
       trim: true,
     },

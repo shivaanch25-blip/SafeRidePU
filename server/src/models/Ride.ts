@@ -2,8 +2,8 @@ import { Schema, model, Document, Types } from 'mongoose';
 import { RIDE_STATUS, RideStatus } from '@saferide/shared';
 
 export interface IRide extends Document {
-  rider: Types.ObjectId;
-  driver?: Types.ObjectId;
+  rider: any;
+  driver?: any;
   riderName: string;
   riderPhone: string;
   driverName?: string;
@@ -30,14 +30,12 @@ export interface IRide extends Document {
 const rideSchema = new Schema<IRide>(
   {
     rider: {
-      type: Schema.Types.ObjectId,
-      ref: 'User',
+      type: Schema.Types.Mixed,
       required: true,
       index: true,
     },
     driver: {
-      type: Schema.Types.ObjectId,
-      ref: 'User',
+      type: Schema.Types.Mixed,
       index: true,
     },
     riderName: {

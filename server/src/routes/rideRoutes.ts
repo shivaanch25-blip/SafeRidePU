@@ -20,6 +20,7 @@ router.use(requireAuth);
 router.post('/request', requireRoles(ROLES.RIDER, ROLES.ADMIN), requestRide);
 router.get('/available', requireRoles(ROLES.DRIVER, ROLES.ADMIN), getAvailableRides);
 router.get('/active', getActiveRide);
+router.get('/current', getActiveRide);
 router.get('/my-rides', getMyRides);
 router.get('/:id', getRideById);
 router.patch('/:id/accept', requireRoles(ROLES.DRIVER, ROLES.ADMIN), acceptRide);

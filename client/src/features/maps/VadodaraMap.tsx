@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { MapContainer, TileLayer, Marker, Popup, Polyline, Polygon, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -7,6 +8,7 @@ import { fetchDrivingRoute, RouteResult } from './mapService.js';
 import PaymentModal from '../payment/PaymentModal.js';
 import toast from 'react-hot-toast';
 import api from '../../config/axios.js';
+import { useAuth } from '../../contexts/AuthContext.js';
 import {
   FiNavigation,
   FiCreditCard,
@@ -155,6 +157,9 @@ export interface IBackendRide {
 }
 
 export const VadodaraMap: React.FC = () => {
+  const { user, isAuthenticated } = useAuth();
+  const navigate = useNavigate();
+
   // 100% Free Open-Source & Public Map (Zero API keys, zero watermarks, zero blocking)
   const [mapTheme, setMapTheme] = useState<keyof typeof MAP_THEMES>('esriStreet');
 
@@ -401,6 +406,13 @@ export const VadodaraMap: React.FC = () => {
   // Request Ride Handler
   const handleInitiateRide = async () => {
     setIsPaymentOpen(false);
+
+    if (!isAuthenticated || !user) {
+      toast.error('Please sign in with your student account to book a ride.');
+      navigate('/login');
+      return;
+    }
+
     setIsBooking(true);
 
     try {
@@ -420,13 +432,13 @@ export const VadodaraMap: React.FC = () => {
         distanceKm,
       });
 
-      const newRide: IBackendRide = res.data?.data?.ride || {
+      const newRide: IBackendRide = res.data?.data?.ride || res.data?.ride || {
         _id: `ride_${Date.now()}`,
         status: 'REQUESTED',
         fare: estimatedFare,
         distanceKm,
         otp: Math.floor(1000 + Math.random() * 9000).toString(),
-        riderName: 'Student Rider',
+        riderName: `${user.firstName} ${user.lastName}`,
         pickupLocation: { address: pickup.name, coordinates: [pickup.lng, pickup.lat] },
         dropoffLocation: { address: dropoff.name, coordinates: [dropoff.lng, dropoff.lat] },
       };
@@ -652,6 +664,13 @@ export const VadodaraMap: React.FC = () => {
                   <FiTruck /> Accept as Driver (Demo)
                 </button>
               </div>
+
+              <button
+                onClick={() => navigate('/current-ride')}
+                className="w-full py-2.5 px-4 rounded-xl font-bold text-xs bg-brand-600 hover:bg-brand-700 text-white transition flex items-center justify-center gap-1.5 cursor-pointer shadow-sm"
+              >
+                <FiTruck /> View Full Ride Tracker
+              </button>
 
               <button
                 onClick={handleCancelRide}
@@ -968,7 +987,14 @@ export const VadodaraMap: React.FC = () => {
               {/* Booking CTA */}
               <div className="pt-2">
                 <button
-                  onClick={() => setIsPaymentOpen(true)}
+                  onClick={() => {
+                    if (!isAuthenticated || !user) {
+                      toast.error('Please sign in with your student account to book a ride.');
+                      navigate('/login');
+                      return;
+                    }
+                    setIsPaymentOpen(true);
+                  }}
                   disabled={isLoadingRoute || !route || isBooking}
                   className="w-full py-3.5 px-4 rounded-xl font-bold text-white bg-emerald-600 hover:bg-emerald-700 transition shadow-lg shadow-emerald-600/30 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
                 >
