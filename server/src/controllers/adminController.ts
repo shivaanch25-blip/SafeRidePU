@@ -7,6 +7,7 @@ import { sendSuccess } from '../utils/response.js';
 import { isDbConnected } from '../config/db.js';
 import { inMemoryUsers } from './authController.js';
 import { inMemoryRides } from './rideController.js';
+import bcrypt from 'bcryptjs';
 
 // In-memory mock SOS alerts for offline/demo mode
 export interface IMockSOS {
@@ -227,3 +228,63 @@ export const resolveSosAlert = async (req: Request, res: Response, next: NextFun
     next(error);
   }
 };
+
+// 7. Register Campus Driver (Admin Onboarding)
+export const registerDriver = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { firstName, lastName, email, phoneNumber, vehicleModel, plateNumber, password } = req.body;
+
+    if (!email || !firstName || !lastName) {
+      throw new AppError('First name, last name, and institutional email are required.', 400);
+    }
+
+    if (!isDbConnected()) {
+      const existing = inMemoryUsers.find((u) => u.email.toLowerCase() === email.toLowerCase());
+      if (existing) {
+        throw new AppError('A user with this email already exists.', 400);
+      }
+
+      const hashedPassword = bcrypt.hashSync(password || 'Password@123', 10);
+      const newDriver = {
+        _id: `usr_driver_${Date.now()}`,
+        email: email.toLowerCase().trim(),
+        password: hashedPassword,
+        firstName,
+        lastName,
+        role: 'Driver',
+        phoneNumber: phoneNumber || '+91 9876543210',
+        isVerified: true,
+        status: 'Active',
+        profileCompleted: true,
+        vehicleModel: vehicleModel || 'Tata Tigor EV (Campus Fleet)',
+        plateNumber: plateNumber || 'GJ-06-PU-2026',
+      };
+
+      inMemoryUsers.push(newDriver as any);
+      return sendSuccess(res, { driver: newDriver }, 'Driver registered and approved successfully.', 201);
+    }
+
+    const existingUser = await User.findOne({ email: email.toLowerCase().trim() });
+    if (existingUser) {
+      throw new AppError('A user with this email already exists.', 400);
+    }
+
+    const hashedPassword = await bcrypt.hash(password || 'Password@123', 12);
+    const driver = await User.create({
+      firstName,
+      lastName,
+      email: email.toLowerCase().trim(),
+      phoneNumber: phoneNumber || '+91 9876543210',
+      password: hashedPassword,
+      role: 'Driver',
+      isVerified: true,
+      status: 'Active',
+      profileCompleted: true,
+    });
+
+    return sendSuccess(res, { driver }, 'Driver registered and approved successfully.', 201);
+  } catch (error) {
+    next(error);
+  }
+};
+

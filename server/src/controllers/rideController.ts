@@ -314,3 +314,55 @@ export const getMyRides = async (req: Request, res: Response, next: NextFunction
     next(error);
   }
 };
+
+// 7. Get Ride By ID (For Real-Time Status Tracking)
+export const getRideById = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { id } = req.params;
+
+    if (!isDbConnected()) {
+      const ride = inMemoryRides.find((r) => r._id === id);
+      if (!ride) {
+        throw new AppError('Ride not found.', 404);
+      }
+      return sendSuccess(res, { ride }, 'Ride details retrieved.');
+    }
+
+    const ride = await Ride.findById(id);
+    if (!ride) {
+      throw new AppError('Ride not found.', 404);
+    }
+    return sendSuccess(res, { ride }, 'Ride details retrieved.');
+  } catch (error) {
+    next(error);
+  }
+};
+
+// 8. Cancel Ride Request
+export const cancelRide = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { id } = req.params;
+
+    if (!isDbConnected()) {
+      const ride = inMemoryRides.find((r) => r._id === id);
+      if (!ride) {
+        throw new AppError('Ride not found.', 404);
+      }
+      ride.status = RIDE_STATUS.CANCELLED;
+      ride.updatedAt = new Date();
+      return sendSuccess(res, { ride }, 'Ride cancelled.');
+    }
+
+    const ride = await Ride.findById(id);
+    if (!ride) {
+      throw new AppError('Ride not found.', 404);
+    }
+    ride.status = RIDE_STATUS.CANCELLED;
+    await ride.save();
+
+    return sendSuccess(res, { ride }, 'Ride cancelled.');
+  } catch (error) {
+    next(error);
+  }
+};
+

@@ -7,3 +7,25 @@
     @apply antialiased selection:bg-brand-500 selection:text-white;
   }
 }
+
+/* Leaflet Map & Tiles Fix for Tailwind CSS */
+.leaflet-container {
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 480px;
+  z-index: 1;
+}
+
+.leaflet-container img {
+  max-width: none !important;
+  max-height: none !important;
+}
+
+.leaflet-pane {
+  z-index: 400 !important;
+}
+
+.leaflet-top,
+.leaflet-bottom {
+  z-index: 500 !important;
+}

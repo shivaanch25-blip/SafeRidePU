@@ -6,6 +6,7 @@ import {
   getAdminRides,
   getAdminSosAlerts,
   resolveSosAlert,
+  registerDriver,
 } from '../controllers/adminController.js';
 import { requireAuth } from '../middlewares/auth.js';
 
@@ -16,6 +17,7 @@ router.use(requireAuth);
 router.get('/stats', getAdminStats);
 router.get('/users', getAdminUsers);
 router.patch('/users/:id/status', updateUserStatus);
+router.post('/drivers', registerDriver);
 router.get('/rides', getAdminRides);
 router.get('/sos-alerts', getAdminSosAlerts);
 router.patch('/sos-alerts/:id/resolve', resolveSosAlert);
