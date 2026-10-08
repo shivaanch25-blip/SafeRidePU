@@ -61,8 +61,18 @@ export const fetchDrivingRoute = async (
     const estDuration = Math.max(5, Math.round(straightDistKm * 2.2));
     const estimatedFare = calculateFare(straightDistKm);
 
+    // Generate 30 intermediate waypoints between start and end for smooth GPS simulation
+    const interpolated: [number, number][] = [];
+    const steps = 30;
+    for (let i = 0; i <= steps; i++) {
+      const t = i / steps;
+      const lat = start[0] + (end[0] - start[0]) * t;
+      const lng = start[1] + (end[1] - start[1]) * t;
+      interpolated.push([lat, lng]);
+    }
+
     return {
-      coordinates: [start, end],
+      coordinates: interpolated,
       distanceKm: straightDistKm,
       durationMinutes: estDuration,
       estimatedFare,

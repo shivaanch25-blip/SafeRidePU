@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../../contexts/AuthContext.js';
 import api from '../../config/axios.js';
 import toast from 'react-hot-toast';
@@ -51,6 +51,15 @@ export const DriverDashboard: React.FC = () => {
   const [startOtp, setStartOtp] = useState('');
   const [isUpdating, setIsUpdating] = useState(false);
 
+  // BroadcastChannel for instant cross-tab sync with student console
+  const transitChannel = useMemo(() => {
+    try {
+      return new BroadcastChannel('saferide_transit_channel');
+    } catch {
+      return null;
+    }
+  }, []);
+
   // Fetch driver data from backend
   const fetchDriverData = async () => {
     try {
@@ -80,9 +89,19 @@ export const DriverDashboard: React.FC = () => {
 
   useEffect(() => {
     fetchDriverData();
-    const interval = setInterval(fetchDriverData, 3000); // 3-second live refresh
+    const interval = setInterval(fetchDriverData, 2500); // 2.5-second live refresh
+
+    if (transitChannel) {
+      transitChannel.onmessage = (event) => {
+        if (event.data?.type === 'RIDE_REQUESTED') {
+          fetchDriverData();
+          toast('🔔 New campus ride requested by student!', { icon: '🚗' });
+        }
+      };
+    }
+
     return () => clearInterval(interval);
-  }, []);
+  }, [transitChannel]);
 
   // Accept a ride request
   const handleAcceptRide = async (rideId: string) => {
@@ -90,8 +109,16 @@ export const DriverDashboard: React.FC = () => {
     try {
       const res = await api.patch(`/rides/${rideId}/accept`);
       if (res.data?.status === 'success') {
+        const acceptedRide = res.data.data.ride;
         toast.success('🚗 Ride accepted! Heading to student pickup location.');
-        setActiveRide(res.data.data.ride);
+        setActiveRide(acceptedRide);
+        localStorage.setItem('saferide_active_ride', JSON.stringify(acceptedRide));
+
+        // Notify student tab instantly
+        if (transitChannel) {
+          transitChannel.postMessage({ type: 'RIDE_ACCEPTED', ride: acceptedRide });
+        }
+
         fetchDriverData();
       }
     } catch (err: any) {
@@ -118,15 +145,27 @@ export const DriverDashboard: React.FC = () => {
 
       const res = await api.patch(`/rides/${activeRide._id}/status`, payload);
       if (res.data?.status === 'success') {
+        const updatedRide = res.data.data.ride;
+
         if (status === 'ARRIVED_PICKUP') {
           toast.success('📍 Status updated: Arrived at pickup point.');
+          if (transitChannel) transitChannel.postMessage({ type: 'DRIVER_ARRIVED', ride: updatedRide });
         } else if (status === 'ACTIVE') {
           toast.success('🚀 PIN Verified! Campus trip started.');
+          if (transitChannel) transitChannel.postMessage({ type: 'TRIP_STARTED', ride: updatedRide });
         } else if (status === 'COMPLETED') {
           toast.success(`🎉 Trip completed! ₹${activeRide.fare} added to your earnings.`);
           setStartOtp('');
+          if (transitChannel) transitChannel.postMessage({ type: 'TRIP_COMPLETED', ride: updatedRide });
         }
-        setActiveRide(status === 'COMPLETED' ? null : res.data.data.ride);
+
+        setActiveRide(status === 'COMPLETED' ? null : updatedRide);
+        if (status === 'COMPLETED') {
+          localStorage.removeItem('saferide_active_ride');
+        } else {
+          localStorage.setItem('saferide_active_ride', JSON.stringify(updatedRide));
+        }
+
         fetchDriverData();
       }
     } catch (err: any) {
