@@ -26,8 +26,12 @@ import VadodaraMap from './features/maps/VadodaraMap.js';
 import SOSModal from './features/securityOffice/SOSModal.js';
 import AIChatbotModal from './features/chatbot/AIChatbotModal.js';
 
+// Driver & Admin feature views
+import DriverDashboard from './features/driver/DriverDashboard.js';
+import AdminDashboard from './features/admin/AdminDashboard.js';
+
 // Icons
-import { FiShield, FiLogOut, FiCreditCard, FiSmartphone, FiKey, FiAlertTriangle } from 'react-icons/fi';
+import { FiShield, FiLogOut, FiCreditCard, FiSmartphone, FiKey, FiAlertTriangle, FiTruck } from 'react-icons/fi';
 
 const NavigationBar: React.FC<{ onOpenSOS: () => void }> = ({ onOpenSOS }) => {
   const { user, isAuthenticated, logout } = useAuth();
@@ -69,6 +73,18 @@ const NavigationBar: React.FC<{ onOpenSOS: () => void }> = ({ onOpenSOS }) => {
 
           {isAuthenticated ? (
             <>
+              <Link
+                to="/driver"
+                className="hover:text-amber-200 text-amber-300 font-bold transition flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs"
+              >
+                <FiTruck className="text-xs" /> Driver
+              </Link>
+              <Link
+                to="/admin"
+                className="hover:text-purple-200 text-purple-300 font-bold transition flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs"
+              >
+                <FiShield className="text-xs" /> Admin
+              </Link>
               <Link
                 to="/payments"
                 className="hover:text-brand-200 transition flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg"
@@ -191,6 +207,8 @@ function App() {
 
               {/* Protected Authenticated Routes */}
               <Route element={<ProtectedRoute />}>
+                <Route path="/driver" element={<DriverDashboard />} />
+                <Route path="/admin" element={<AdminDashboard />} />
                 <Route path="/payments" element={<PaymentHistory />} />
                 <Route path="/devices" element={<DeviceManagement />} />
                 <Route path="/change-password" element={<ChangePassword />} />

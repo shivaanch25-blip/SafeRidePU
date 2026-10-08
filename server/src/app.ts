@@ -16,6 +16,8 @@ import authRoutes from './routes/authRoutes.js';
 import paymentRoutes from './routes/paymentRoutes.js';
 import sosRoutes from './routes/sosRoutes.js';
 import chatbotRoutes from './routes/chatbotRoutes.js';
+import rideRoutes from './routes/rideRoutes.js';
+import adminRoutes from './routes/adminRoutes.js';
 
 
 import path from 'path';
@@ -88,6 +90,12 @@ app.use('/api/v1/sos', sosRoutes);
 
 // 24/7 AI Chatbot routes
 app.use('/api/v1/chatbot', chatbotRoutes);
+
+// Campus Ride management & driver routes
+app.use('/api/v1/rides', rideRoutes);
+
+// Admin control & campus security management routes
+app.use('/api/v1/admin', adminRoutes);
 
 
 
