@@ -58,23 +58,29 @@ const pickupIcon = createCustomIcon('#10b981', '🟢');
 const dropoffIcon = createCustomIcon('#ef4444', '📍');
 const driverCarIcon = createCustomIcon('#2563eb', '🚗', true);
 
-// Map tiles provider list (CartoDB & Esri never block localhost and never show "Access is blocked")
+// 100% Free Open-Source & Public Tile Providers (Zero API keys, zero watermarks, zero blocking)
 const MAP_THEMES = {
-  voyager: {
-    name: 'CartoDB Transit (Ola/Uber Style)',
-    url: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
-    subdomains: ['a', 'b', 'c', 'd'],
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/">CARTO</a>',
-  },
-  positron: {
-    name: 'CartoDB Light (Clean)',
-    url: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
-    subdomains: ['a', 'b', 'c', 'd'],
-    attribution: '&copy; OpenStreetMap &copy; CARTO',
-  },
   esriStreet: {
-    name: 'Esri World Street',
+    name: 'Free World Street Map (No Key Required)',
     url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}',
+    subdomains: ['server'],
+    attribution: 'Tiles &copy; Esri &mdash; Free Street Map for Transit',
+  },
+  hot: {
+    name: 'Humanitarian OSM (Free Open-Source)',
+    url: 'https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png',
+    subdomains: ['a', 'b', 'c'],
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+  },
+  osmDe: {
+    name: 'OpenStreetMap Mirror (Free Open-Source)',
+    url: 'https://{s}.tile.openstreetmap.de/{z}/{x}/{y}.png',
+    subdomains: ['a', 'b', 'c'],
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+  },
+  esriTopo: {
+    name: 'Esri World Topographic (Free)',
+    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}',
     subdomains: ['server'],
     attribution: 'Tiles &copy; Esri',
   },
@@ -149,8 +155,8 @@ export interface IBackendRide {
 }
 
 export const VadodaraMap: React.FC = () => {
-  // Map theme selection (CartoDB Voyager prevents "Access is blocked" error permanently)
-  const [mapTheme, setMapTheme] = useState<keyof typeof MAP_THEMES>('voyager');
+  // 100% Free Open-Source & Public Map (Zero API keys, zero watermarks, zero blocking)
+  const [mapTheme, setMapTheme] = useState<keyof typeof MAP_THEMES>('esriStreet');
 
   // Pickup & Dropoff State
   const [pickup, setPickup] = useState<LocationPoint>(VADODARA_LOCATIONS[0]);
@@ -986,8 +992,9 @@ export const VadodaraMap: React.FC = () => {
             scrollWheelZoom={true}
             style={{ height: '100%', width: '100%', minHeight: '520px' }}
           >
-            {/* CartoDB / Esri Tile Layer (NEVER shows "Access is blocked") */}
+            {/* 100% Free Public Tile Layer (No API Key Required) */}
             <TileLayer
+              key={mapTheme}
               attribution={MAP_THEMES[mapTheme].attribution}
               url={MAP_THEMES[mapTheme].url}
               subdomains={MAP_THEMES[mapTheme].subdomains}
